@@ -80,7 +80,7 @@ public class MainActivity extends ActionBarActivity {
                         String FILENAME = "event_log_file";
                         String root = Environment.getExternalStorageDirectory().toString();
                         File myDir = new File(root+"/testApp1");
-                        if(myDir.mkdir())
+                        if(myDir.mkdir() || myDir.exists())
                         {
                             File file = new File(myDir, FILENAME);
                             if (file.exists()) file.delete();
