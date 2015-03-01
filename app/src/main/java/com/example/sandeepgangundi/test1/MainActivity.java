@@ -78,7 +78,7 @@ public class MainActivity extends ActionBarActivity {
                     mSensorManager.unregisterListener(mSensorEventListener);
                     recordingEndTime = System.currentTimeMillis();
                     if(isExternalStorageWritable()) {
-                        String FILENAME = "event_log_file";
+                        String FILENAME = "event_log_file.csv";
                         String root = Environment.getExternalStorageDirectory().toString();
                         File myDir = new File(root+"/testApp1");
                         if(myDir.mkdir() || myDir.exists())
@@ -113,10 +113,11 @@ public class MainActivity extends ActionBarActivity {
     }
 
     SensorEventListener mSensorEventListener = new SensorEventListener() {
-        double lastReportedZ;
+        double lastReportedZ = 0.0;
+        double lastReportedVal = 9.5;
         long lastReportTime = 0;
         final double sensitivity = 0.3;//(1/30G)
-        final long minimumReportWindow = 1000;
+        final long minimumReportWindow = 500;
 
         @Override
         public void onSensorChanged(SensorEvent event) {
@@ -133,13 +134,22 @@ public class MainActivity extends ActionBarActivity {
         public void reportEvent(float newZ) {
             long eventTime = System.currentTimeMillis();
             if ((Math.abs(newZ - lastReportedZ) > sensitivity) && (eventTime - lastReportTime)> minimumReportWindow) {
-                lastReportedZ = newZ;
-                lastReportTime = eventTime;
+                // report last status again a little in the past
+                sensorEvent newMinusOneEvent = new sensorEvent();
+                newMinusOneEvent.eventTime = eventTime - minimumReportWindow + (long)(minimumReportWindow/2);
+                newMinusOneEvent.sensorVal = lastReportedVal;
+                sensorEventlist.add(newMinusOneEvent);
+
+                // reporting current event
                 sensorEvent newEvent = new sensorEvent();
                 newEvent.eventTime = eventTime;
-                newEvent.sensorVal = newZ;
+                newEvent.sensorVal = Math.abs(newZ-lastReportedZ);
                 sensorEventlist.add(newEvent);
 
+                // tracking status for next report event
+                lastReportedVal = Math.abs(newZ-lastReportedZ);
+                lastReportTime = eventTime;
+                lastReportedZ = newZ;
             }
         }
         @Override
