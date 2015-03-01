@@ -57,7 +57,15 @@ public class MainActivity extends ActionBarActivity {
     SensorEventListener mSensorEventListener = new SensorEventListener() {
         @Override
         public void onSensorChanged(SensorEvent event) {
+            if(event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+                float x = event.values[0];
+                float y = event.values[1];
+                float z = event.values[2];
 
+                xCoor.setText("X: " +x);
+                yCoor.setText("Y: " +y);
+                zCoor.setText("Z: " +z);
+            }
         }
 
         @Override
