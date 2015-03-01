@@ -1,6 +1,7 @@
 package com.example.sandeepgangundi.test1;
 
 import android.content.Context;
+import android.os.Environment;
 import android.support.v7.app.ActionBarActivity;
 import android.os.Bundle;
 import android.view.Menu;
@@ -13,17 +14,43 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.util.ArrayList;
+import java.util.List;
+
 
 public class MainActivity extends ActionBarActivity {
 
+    class sensorEvent {
+        long eventTime;
+        double sensorVal;
+        sensorEvent()
+        {
+            eventTime = 0;
+            sensorVal = 0.0;
+        }
+    }
+
     private SensorManager mSensorManager;
     private Sensor mAccelerometer;
+    private long recordingStartTime;
+    private long recordingEndTime;
+    List<sensorEvent> sensorEventlist;
     //private SensorEventListener mSensorEventListener;
+    private
 
     TextView xCoor;
     TextView yCoor;
     TextView zCoor;
 
+    boolean isExternalStorageWritable() {
+        String state = Environment.getExternalStorageState();
+        if (Environment.MEDIA_MOUNTED.equals(state)) {
+            return true;
+        }
+        return false;
+    }
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -36,7 +63,9 @@ public class MainActivity extends ActionBarActivity {
         start.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                mSensorManager.registerListener(mSensorEventListener, mAccelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+                mSensorManager.registerListener(mSensorEventListener, mAccelerometer, SensorManager.SENSOR_DELAY_FASTEST);
+                recordingStartTime = System.currentTimeMillis();
+                sensorEventlist = new ArrayList<sensorEvent>();
             }
         });
 
@@ -44,7 +73,35 @@ public class MainActivity extends ActionBarActivity {
         stop.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                mSensorManager.unregisterListener(mSensorEventListener);
+                try {
+                    mSensorManager.unregisterListener(mSensorEventListener);
+                    recordingEndTime = System.currentTimeMillis();
+                    if(isExternalStorageWritable()) {
+                        String FILENAME = "event_log_file";
+                        String root = Environment.getExternalStorageDirectory().toString();
+                        File myDir = new File(root+"/testApp1");
+                        if(myDir.mkdir())
+                        {
+                            File file = new File(myDir, FILENAME);
+                            if (file.exists()) file.delete();
+                            FileOutputStream fos = new FileOutputStream(file);
+                            for (int i = 0; i < sensorEventlist.size(); i++) {
+                                StringBuilder eventString = new StringBuilder();
+                                eventString.append(sensorEventlist.get(i).eventTime);
+                                eventString.append(",");
+                                eventString.append(sensorEventlist.get(i).sensorVal);
+                                eventString.append("\n");
+                                fos.write(eventString.toString().getBytes());
+                            }
+                            fos.close();
+                        }
+                    }
+                }
+                catch(Exception E) {
+                    //Need to have something here
+                    E.printStackTrace();
+                }
+
             }
         });
 
@@ -55,6 +112,9 @@ public class MainActivity extends ActionBarActivity {
     }
 
     SensorEventListener mSensorEventListener = new SensorEventListener() {
+        double oldZVal;
+        final double sensitivity = 0.3;
+
         @Override
         public void onSensorChanged(SensorEvent event) {
             if(event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
@@ -62,9 +122,17 @@ public class MainActivity extends ActionBarActivity {
                 float y = event.values[1];
                 float z = event.values[2];
 
-                xCoor.setText("X: " +x);
-                yCoor.setText("Y: " +y);
-                zCoor.setText("Z: " +z);
+                if(Math.abs(z - oldZVal) > sensitivity) {
+                    oldZVal = z;
+                    long eventTime = System.currentTimeMillis();
+                    sensorEvent newEvent = new sensorEvent();
+                    newEvent.eventTime = eventTime;
+                    newEvent.sensorVal = z;
+                    sensorEventlist.add(newEvent);
+                    xCoor.setText("X: " + x);
+                    yCoor.setText("Y: " + y);
+                    zCoor.setText("Z: " + z);
+                }
             }
         }
 
