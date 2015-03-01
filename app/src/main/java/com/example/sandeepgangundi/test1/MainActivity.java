@@ -51,6 +51,7 @@ public class MainActivity extends ActionBarActivity {
         }
         return false;
     }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -112,8 +113,10 @@ public class MainActivity extends ActionBarActivity {
     }
 
     SensorEventListener mSensorEventListener = new SensorEventListener() {
-        double oldZVal;
-        final double sensitivity = 0.3;
+        double lastReportedZ;
+        long lastReportTime = 0;
+        final double sensitivity = 0.3;//(1/30G)
+        final long minimumReportWindow = 1000;
 
         @Override
         public void onSensorChanged(SensorEvent event) {
@@ -121,41 +124,31 @@ public class MainActivity extends ActionBarActivity {
                 float x = event.values[0];
                 float y = event.values[1];
                 float z = event.values[2];
-
-                if(Math.abs(z - oldZVal) > sensitivity) {
-                    oldZVal = z;
-                    long eventTime = System.currentTimeMillis();
-                    sensorEvent newEvent = new sensorEvent();
-                    newEvent.eventTime = eventTime;
-                    newEvent.sensorVal = z;
-                    sensorEventlist.add(newEvent);
-                    xCoor.setText("X: " + x);
-                    yCoor.setText("Y: " + y);
-                    zCoor.setText("Z: " + z);
-                }
+                reportEvent(z);
+                xCoor.setText("X: " + x);
+                yCoor.setText("Y: " + y);
+                zCoor.setText("Z: " + z);
             }
         }
+        public void reportEvent(float newZ) {
+            long eventTime = System.currentTimeMillis();
+            if ((Math.abs(newZ - lastReportedZ) > sensitivity) && (eventTime - lastReportTime)> minimumReportWindow) {
+                lastReportedZ = newZ;
+                lastReportTime = eventTime;
+                sensorEvent newEvent = new sensorEvent();
+                newEvent.eventTime = eventTime;
+                newEvent.sensorVal = newZ;
+                sensorEventlist.add(newEvent);
 
+            }
+        }
         @Override
         public void onAccuracyChanged(Sensor sensor, int accuracy) {
 
         }
     };
 
-
-
-    public void onSensorChanged(SensorEvent sensorEvent) {
-        if(sensorEvent.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
-            float x = sensorEvent.values[0];
-            float y = sensorEvent.values[1];
-            float z = sensorEvent.values[2];
-
-            xCoor.setText("X: " +x);
-            yCoor.setText("Y: " +y);
-            zCoor.setText("Z: " +z);
-        }
-    }
-    @Override
+   @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.menu_main, menu);
