@@ -116,8 +116,9 @@ public class MainActivity extends ActionBarActivity {
         double lastReportedZ = 0.0;
         double lastReportedVal = 9.5;
         long lastReportTime = 0;
-        final double sensitivity = 0.3;//(1/30G)
+        final double sensitivity = 0.5;//(1/30G)
         final long minimumReportWindow = 500;
+        boolean reportZero = false;
 
         @Override
         public void onSensorChanged(SensorEvent event) {
@@ -126,14 +127,14 @@ public class MainActivity extends ActionBarActivity {
                 float y = event.values[1];
                 float z = event.values[2];
                 reportEvent(z);
-                xCoor.setText("X: " + x);
-                yCoor.setText("Y: " + y);
-                zCoor.setText("Z: " + z);
+                xCoor.setText("X: " + String.format("%.2f",x));
+                yCoor.setText("Y: " + String.format("%.2f",y));
+                zCoor.setText("Z: " + String.format("%.2f",z));
             }
         }
         public void reportEvent(float newZ) {
-            long eventTime = System.currentTimeMillis();
-            if ((Math.abs(newZ - lastReportedZ) > sensitivity) && (eventTime - lastReportTime)> minimumReportWindow) {
+            long eventTime = System.currentTimeMillis() - recordingStartTime;
+            if ((Math.abs(newZ - lastReportedZ) > sensitivity) && ((eventTime - lastReportTime)> minimumReportWindow)) {
                 // report last status again a little in the past
                 sensorEvent newMinusOneEvent = new sensorEvent();
                 newMinusOneEvent.eventTime = eventTime - minimumReportWindow + (long)(minimumReportWindow/2);
@@ -150,6 +151,20 @@ public class MainActivity extends ActionBarActivity {
                 lastReportedVal = Math.abs(newZ-lastReportedZ);
                 lastReportTime = eventTime;
                 lastReportedZ = newZ;
+                reportZero = true;
+            } else if ((Math.abs(newZ - lastReportedZ) < sensitivity) && ((eventTime - lastReportTime)> minimumReportWindow)) {
+                // reporting current event as zero movement
+                if (reportZero) {
+                    sensorEvent newEvent = new sensorEvent();
+                    newEvent.eventTime = eventTime;
+                    newEvent.sensorVal = 0;
+                    sensorEventlist.add(newEvent);
+                    reportZero = false;
+                    // tracking status for next report event
+                    lastReportedVal = 0;
+                    lastReportTime = eventTime;
+                    lastReportedZ = newZ;
+                }
             }
         }
         @Override
